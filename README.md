@@ -7,6 +7,12 @@ sends the rest to a small classifier — then reports *why* it decided what it d
 There is no pretrained model, no dataset download and no network access; the whole
 pipeline is reproducible bit-for-bit from a seed.
 
+[![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue)](.github/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+---
+
 ## Why it matters
 
 It is easy to build a solar-panel "defect detector" that reports 99% accuracy and
