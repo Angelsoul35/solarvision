@@ -24,13 +24,15 @@ decision carries the reason that produced it.
 ```mermaid
 flowchart TD
     IMG["panel image<br/>(grayscale PNG)"] -->|extract| FEAT["classical features<br/>brightness · bright blobs<br/>edges · dark-region shape"]
-    FEAT --> RULES{deterministic<br/>rule fires?}
+    FEAT --> NOV{novelty guard<br/>inside training manifold?}
+    NOV -->|no| REVIEW["out-of-distribution<br/>-> manual review"]
+    NOV -->|yes| RULES{deterministic<br/>rule fires?}
     RULES -->|yes| RULEOUT["rule decision<br/>hotspot / crack / dead_cell"]
     RULES -->|no| MODEL["random-forest<br/>classifier"]
     MODEL --> CONF{confidence >= threshold?}
-    CONF -->|no| REVIEW["low confidence<br/>-> manual review"]
+    CONF -->|no| REVIEW
     CONF -->|yes| MODELOUT["model decision"]
-    RULEOUT --> REPORT["assessment<br/>class · confidence · reason · evidence"]
+    RULEOUT --> REPORT["assessment<br/>class · confidence · reason<br/>+ per-panel evidence"]
     MODELOUT --> REPORT
     REVIEW --> REPORT
 ```
@@ -62,6 +64,19 @@ defects are configurations never seen in training; the reported accuracy is the
 honest generalisation number (~0.88 averaged over seeds, see `evaluation.py`), not
 a memorised ~1.0. Low-confidence calls are flagged for manual review rather than
 asserted.
+
+## Why a novelty guard, and why per-panel evidence
+
+A classifier trained on panels will still return *some* class, confidently, for an
+input that is not a panel at all — a blank frame, a photo of something else, an
+unseen artefact. To stop that confident-but-meaningless answer, an **isolation
+forest** fitted on the training features acts as a novelty guard: a panel whose
+features fall outside the training manifold is marked out-of-distribution and sent
+to review, regardless of the classifier's confidence. The explanation is also made
+**per panel**: rather than the forest's global importances (identical for every
+image), the report surfaces the features of *this* panel that deviate most from a
+typical one, as signed z-scores — the measurements that actually drove this
+decision.
 
 ## Scope
 

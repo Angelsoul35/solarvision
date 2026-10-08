@@ -21,7 +21,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import IsolationForest, RandomForestClassifier
 
 from .features import FEATURE_NAMES, Features, extract, extract_matrix
 from .generate import make_dataset
@@ -43,6 +43,7 @@ class Assessment:
     reason: str
     evidence: list[tuple[str, float]] = field(default_factory=list)
     probabilities: dict[str, float] = field(default_factory=dict)
+    out_of_distribution: bool = False
 
     @property
     def title(self) -> str:
@@ -62,6 +63,11 @@ class DefectDetector:
         self.dead_cell_dark_frac = dead_cell_dark_frac
         self.crack_min_elongation = crack_min_elongation
         self._model: RandomForestClassifier | None = None
+        # Fitted alongside the classifier (see _fit_matrix): the training feature
+        # distribution, used for per-panel explanations and the novelty guard.
+        self._feat_mean: np.ndarray | None = None
+        self._feat_std: np.ndarray | None = None
+        self._novelty: IsolationForest | None = None
 
     # -- training -------------------------------------------------------------
     def fit(
@@ -69,21 +75,27 @@ class DefectDetector:
     ) -> DefectDetector:
         if images is None or labels is None:
             images, labels = make_dataset()
-        x = extract_matrix(images)
-        model = RandomForestClassifier(
-            n_estimators=200, max_depth=12, random_state=0, n_jobs=1
-        )
-        model.fit(x, labels)
-        self._model = model
-        return self
+        return self.fit_features(extract_matrix(images), labels)
 
     def fit_features(self, x: np.ndarray, labels: list[str]) -> DefectDetector:
-        """Fit directly from a precomputed feature matrix (used by the evaluation)."""
+        """Fit from a precomputed feature matrix (shared by :meth:`fit` and the eval).
+
+        Besides the classifier we record the training feature distribution (mean
+        and spread) for per-panel explanations, and fit an isolation forest as a
+        **novelty guard**: a panel whose features fall outside the training manifold
+        (a non-panel image, an unseen artefact) is routed to review instead of being
+        classified with false confidence.
+        """
         model = RandomForestClassifier(
             n_estimators=200, max_depth=12, random_state=0, n_jobs=1
         )
         model.fit(x, labels)
         self._model = model
+        self._feat_mean = x.mean(axis=0)
+        self._feat_std = x.std(axis=0) + 1e-9
+        self._novelty = IsolationForest(
+            n_estimators=200, contamination=0.02, random_state=0
+        ).fit(x)
         return self
 
     def _require_fitted(self) -> RandomForestClassifier:
@@ -130,17 +142,30 @@ class DefectDetector:
 
     # -- model explanation ----------------------------------------------------
     def _model_evidence(self, f: Features, k: int = 4) -> list[tuple[str, float]]:
-        """The features that mattered most, as (name, value) pairs.
+        """Per-panel evidence: the features of *this* panel that stand out most.
 
-        A random forest gives *global* importances; we surface the globally most
-        important features together with this panel's values, so the reviewer sees
-        which measurements the decision leaned on.
+        A random forest only exposes *global* importances, which would show the same
+        features for every panel. Instead we report, for this specific panel, the
+        features that deviate most from a typical training panel — the value's signed
+        z-score ``(value - mean) / std``, weighted by the feature's global importance
+        and clipped so a zero-variance feature cannot explode. A hotspot panel then
+        surfaces its high ``bright_blob_contrast``; a crack surfaces its high
+        ``dark_blob_elongation`` — the measurements that actually drove *this*
+        decision, not a static ranking.
         """
-        model = self._require_fitted()
-        importances = model.feature_importances_
-        order = np.argsort(importances)[::-1]
+        self._require_fitted()
+        assert self._feat_mean is not None and self._feat_std is not None
         values = f.vector()
-        return [(FEATURE_NAMES[i], round(float(values[i]), 4)) for i in order[:k]]
+        z = np.clip((values - self._feat_mean) / self._feat_std, -20.0, 20.0)
+        weighted = np.abs(z) * self._model.feature_importances_
+        order = np.argsort(weighted)[::-1]
+        return [(FEATURE_NAMES[i], round(float(z[i]), 2)) for i in order[:k]]
+
+    def _is_novel(self, f: Features) -> bool:
+        """True if this panel lies outside the training feature manifold (novelty)."""
+        if self._novelty is None:
+            return False
+        return bool(self._novelty.predict(f.vector().reshape(1, -1))[0] == -1)
 
     # -- inference ------------------------------------------------------------
     def assess_features(self, f: Features) -> Assessment:
@@ -151,31 +176,41 @@ class DefectDetector:
             str(cls): round(float(p), 4) for cls, p in zip(model.classes_, proba, strict=True)
         }
 
+        # Novelty guard: a panel outside the training manifold is reviewed, not
+        # trusted, whichever stage decides it — an OOD input can both trip a rule
+        # and fool the classifier into a confident-but-meaningless answer.
+        novel = self._is_novel(f)
+
         rule = self._apply_rules(f)
         if rule is not None:
             cls, reason = rule
             return Assessment(
                 predicted_class=cls,
                 confidence=_RULE_CONFIDENCE,
-                needs_review=False,
+                needs_review=novel,
                 decided_by="rule",
-                reason=reason,
+                reason=reason + (" (out-of-distribution: review)" if novel else ""),
                 evidence=self._model_evidence(f),
                 probabilities=probabilities,
+                out_of_distribution=novel,
             )
 
         best = int(np.argmax(proba))
         cls = str(model.classes_[best])
         confidence = float(proba[best])
         info = describe(cls)
+        reason = f"classifier: {info.signature}"
+        if novel:
+            reason += " (out-of-distribution: review)"
         return Assessment(
             predicted_class=cls,
             confidence=confidence,
-            needs_review=confidence < self.min_confidence,
+            needs_review=confidence < self.min_confidence or novel,
             decided_by="model",
-            reason=f"classifier: {info.signature}",
+            reason=reason,
             evidence=self._model_evidence(f),
             probabilities=probabilities,
+            out_of_distribution=novel,
         )
 
     def assess(self, img: np.ndarray) -> Assessment:

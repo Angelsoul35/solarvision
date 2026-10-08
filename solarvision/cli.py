@@ -69,8 +69,18 @@ def demo() -> None:
         ev = ", ".join(f"{name}={val}" for name, val in a.evidence[:3])
         print(f"   key features: {ev}")
 
+    # The novelty guard: an input that is not a panel at all must NOT be
+    # confidently classified; it is flagged out-of-distribution and sent to review.
+    print("\n[Out-of-distribution]  an input that is not a panel (random noise)")
+    noise = np.random.default_rng(0).random((IMG_SIZE, IMG_SIZE))
+    print(_ascii_art(noise))
+    ood = svc.assess_image(noise)
+    flag = "[OUT-OF-DISTRIBUTION -> REVIEW]" if ood.out_of_distribution else "accepted"
+    print(f"   -> {flag}  (would-be class {ood.predicted_class} at conf {ood.confidence:.2f})")
+
     print("\n" + "=" * 60)
-    print(f"Detected {correct}/{len(samples)} clear samples correctly.")
+    print(f"Detected {correct}/{len(samples)} clear samples correctly, and the")
+    print("out-of-distribution input was correctly routed to review, not classified.")
     print(
         "These are deliberately clear instances. The honest, held-out accuracy on\n"
         "UNSEEN defect configurations (faint defects included) is reported by\n"

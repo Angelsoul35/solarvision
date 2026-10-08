@@ -58,3 +58,35 @@ def test_rule_layer_fires_on_unambiguous_cases(detector: DefectDetector):
     dead = detector.assess(make_panel(DefectClass.DEAD_CELL, seed=4))
     assert hot.decided_by == "rule" and hot.predicted_class == "hotspot"
     assert dead.decided_by == "rule" and dead.predicted_class == "dead_cell"
+
+
+def test_out_of_distribution_input_is_flagged_for_review(detector: DefectDetector):
+    # Inputs outside the training manifold (not a panel at all) must be routed to
+    # review by the novelty guard, not classified with false confidence.
+    import numpy as np
+
+    blank = np.full((64, 64), 0.5)
+    noise = np.random.default_rng(0).random((64, 64))
+    for img in (blank, noise):
+        a = detector.assess(img)
+        assert a.out_of_distribution is True
+        assert a.needs_review is True
+
+
+def test_in_distribution_panels_are_not_flagged_as_novel(detector: DefectDetector):
+    # A clear, ordinary defect panel is within the training manifold.
+    a = detector.assess(make_panel(DefectClass.HOTSPOT, seed=2))
+    assert a.out_of_distribution is False
+
+
+def test_evidence_is_panel_specific(detector: DefectDetector):
+    # The per-panel evidence surfaces what stands out about THIS panel: a crack's
+    # elongation, a hotspot's bright blob — not one static global ranking.
+    crack = detector.assess(make_panel(DefectClass.CRACK, seed=3))
+    hotspot = detector.assess(make_panel(DefectClass.HOTSPOT, seed=2))
+    crack_top = {name for name, _ in crack.evidence}
+    hotspot_top = {name for name, _ in hotspot.evidence}
+    assert "dark_blob_elongation" in crack_top
+    assert any("bright" in name for name in hotspot_top)
+    # Different panels lean on different evidence.
+    assert crack_top != hotspot_top

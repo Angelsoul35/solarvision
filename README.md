@@ -34,13 +34,15 @@ image to manual review.
 ```mermaid
 flowchart TD
     IMG["panel image<br/>(grayscale PNG)"] -->|extract| FEAT["classical features<br/>brightness · bright blobs<br/>edges · dark-region shape"]
-    FEAT --> RULES{deterministic<br/>rule fires?}
+    FEAT --> NOV{novelty guard<br/>inside training manifold?}
+    NOV -->|no| REVIEW["out-of-distribution<br/>-> manual review"]
+    NOV -->|yes| RULES{deterministic<br/>rule fires?}
     RULES -->|yes| RULEOUT["rule decision<br/>hotspot / crack / dead_cell"]
     RULES -->|no| MODEL["random-forest<br/>classifier"]
     MODEL --> CONF{confidence >= threshold?}
-    CONF -->|no| REVIEW["low confidence<br/>-> manual review"]
+    CONF -->|no| REVIEW
     CONF -->|yes| MODELOUT["model decision"]
-    RULEOUT --> REPORT["assessment<br/>class · confidence · reason · evidence"]
+    RULEOUT --> REPORT["assessment<br/>class · confidence · reason<br/>+ per-panel evidence"]
     MODELOUT --> REPORT
     REVIEW --> REPORT
 ```
@@ -130,9 +132,22 @@ stated plainly:
   errors land (mostly faint defect vs healthy, and faint crack vs dead cell).
   Closing that gap is not a matter of more synthetic data.
 
-Because the model can be wrong, it never asserts a weak call: a low-confidence
-classification is flagged for manual review, and the clear cases are decided by
-the transparent rule layer instead.
+Because the model can be wrong, it never asserts a weak call. Three things keep it
+honest at inference time:
+
+- **A transparent rule layer** decides the clear cases (a strong bright blob, a
+  long thin streak, a compact dark block) with a self-explaining threshold.
+- **Low-confidence calls are routed to review** rather than asserted.
+- **A novelty guard** (an isolation forest over the training features) flags any
+  panel that falls outside the training manifold — a non-panel image, an unseen
+  artefact — as out-of-distribution and sends it to review instead of classifying
+  it with false confidence. This is what stops a random image from being
+  confidently labelled "healthy".
+
+Every assessment also carries **per-panel evidence**: not a static global ranking,
+but the features of *this* panel that stand out most from a typical one (as signed
+z-scores), so a hotspot report surfaces its bright-blob contrast and a crack report
+its elongation.
 
 ## Testing
 
@@ -142,10 +157,12 @@ pytest --cov=solarvision --cov-report=term-missing --cov-fail-under=80
 ```
 
 The suite covers feature extraction (each defect's signature and the healthy
-baseline), the detector on every defect type, the rule layer and the
-low-confidence review path, the honest held-out evaluation (accuracy above a floor
-*and* a bounded train/test gap), the HTTP API (base64 image and generated sample,
-plus the error paths), and the CLI demo.
+baseline), the detector on every defect type, the rule layer, the low-confidence
+review path, the **novelty guard** (an out-of-distribution image is flagged for
+review; an ordinary panel is not), the **per-panel evidence** (a crack surfaces
+its elongation, a hotspot its bright blob), the honest held-out evaluation
+(generalisation proven by a bounded train/test gap, not an accuracy cap), the HTTP
+API (base64 image and generated sample, plus the error paths), and the CLI demo.
 
 ## Documentation
 

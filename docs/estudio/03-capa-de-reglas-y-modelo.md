@@ -32,12 +32,25 @@ bosque aleatorio sobre las 14 características. Es pequeño y está **sembrado**
 **confianza**; si queda por debajo de `SV_MIN_CONFIDENCE` (0,55), la evaluación se
 marca como **revisión manual** en vez de afirmarse.
 
-## La explicación
+## El guardián de novedad (out-of-distribution)
+
+Un clasificador entrenado con paneles devolverá **igualmente** alguna clase, y con
+confianza, ante una imagen que **no es un panel** (un marco en blanco, una foto de
+otra cosa, un artefacto no visto). Para frenar esa respuesta segura pero sin
+sentido, un **isolation forest** entrenado con las mismas características actúa de
+guardián: si una imagen cae **fuera del colector** (manifold) de entrenamiento, se
+marca *out-of-distribution* y va a revisión, sin importar la confianza del bosque.
+Por eso una imagen aleatoria no se etiqueta como "sana" con aplomo.
+
+## La explicación (por imagen, no global)
 
 - Si se activa una regla, el informe da la regla y su razón legible ("mancha a 7,0
   desviaciones robustas sobre el fondo…").
-- Si decide el modelo, el informe nombra las características globalmente más
-  importantes del bosque junto con los **valores de esta imagen**, para que un
-  revisor vea en qué se apoyó la decisión.
+- Si decide el modelo, el informe da la **evidencia de esta imagen**: no el ranking
+  global del bosque (que sería idéntico para todas), sino las características de
+  *este* panel que más se desvían de uno típico, como z-scores con signo. Así un
+  hotspot destaca su `bright_blob_contrast` alto y un crack su `dark_blob_elongation`
+  alta — las medidas que de verdad movieron *esta* decisión.
 
-Así, incluso en el camino del modelo, la decisión es inspeccionable.
+Así, incluso en el camino del modelo, la decisión es inspeccionable **y específica
+de la imagen**.
