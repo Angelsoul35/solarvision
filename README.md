@@ -165,4 +165,4 @@ controlled stand-in for that imagery, not a claim about real-world accuracy.
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[MIT](LICENSE) © Angelo David Padilla Romero
