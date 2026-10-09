@@ -1,4 +1,4 @@
-# 04 — Evaluación honesta
+# 04 — Evaluación sin fuga
 
 ## Qué medimos y cómo
 
@@ -41,10 +41,31 @@ la desviación.
   defecto tenue contra sano, y grieta tenue contra celda muerta). Cerrar esa brecha
   **no** es cuestión de más datos sintéticos.
 
-## El alcance, dicho con claridad
+## Validación con imágenes reales (ELPV)
 
-Es un *benchmark* **sintético**, no software de inspección certificado. Un sistema
-real se entrenaría y validaría con imágenes reales **de electroluminiscencia o
-térmicas** etiquetadas, y casi con seguridad usaría una red convolucional. El
-baseline honesto a batir ahí es este número con configuraciones no vistas, no el
-~1,0 de dentro de distribución.
+El sintético da una medición controlada de 4 clases; las **mismas** características se
+miden también sobre **imágenes reales** de electroluminiscencia — el dataset ELPV
+(funcional vs defectuoso), vendoreado en `datasets/elpv/`. Con
+`python -m solarvision.real_benchmark`:
+
+```
+modelo                    CV accuracy       CV AUC   train   test   gap
+Logística (regularizada)  0.878 ± 0.042     0.886    0.881   0.957  -0.076
+Random forest             0.889 ± 0.035     0.940    1.000   0.957   0.043
+```
+
+Las características a mano **se trasladan directamente** a electroluminiscencia real:
+~0,88 de accuracy y 0,89–0,94 de ROC-AUC sobre celdas reales, con un logístico bien
+ajustado. Tiene sentido físico: un defecto real se ve como una región más **oscura** y
+a menudo **agrietada**, justo lo que miden la cobertura oscura, la elongación y el
+contraste — y cada veredicto sigue nombrando esas características. El random forest
+sube el AUC a 0,94 pero memoriza el train (1,0): el trade-off de capacidad de siempre.
+
+## El alcance, en positivo
+
+Es un pipeline **interpretable y usable** validado en dos frentes: sintético (con
+configuraciones de defecto no vistas, para medir generalización) y **real** (ELPV,
+~0,88). Un despliegue de producción añadiría más tipos de defecto, imágenes térmicas y
+graduación de severidad, y podría usar una CNN para algo más de accuracy — a cambio de
+la explicación por característica que un inspector revisa. Aquí esa explicación se
+conserva, y sobre dato real cuesta poco en accuracy.

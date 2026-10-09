@@ -10,7 +10,7 @@ with the visual signature of its real electroluminescence/thermal counterpart:
 * **crack**   — a thin, dark, randomly oriented streak (a wafer micro-crack);
 * **dead_cell** — a compact dark block the size of a cell (an inactive cell).
 
-Design note (this matters for honesty). Each defect has a scalar **severity** in
+Design note (this matters for rigour). Each defect has a scalar **severity** in
 ``[0, 1]`` that drives its contrast and size, from barely-above-noise to obvious.
 A naive random train/test split would let the test set reuse the exact severities
 seen in training and report a meaningless near-1.0 — the computer-vision analogue
@@ -18,7 +18,7 @@ of template memorisation. :func:`make_split_datasets` instead holds out whole
 **severity/size bins**: the parameter values behind the test images are disjoint
 from those behind the training images, so every test defect is an *unseen*
 configuration. The faint end of the severity range genuinely overlaps the healthy
-class under noise, which is exactly why the honest held-out accuracy sits below
+class under noise, which is exactly why the leakage-free held-out accuracy sits below
 1.0 rather than at a suspicious 1.0.
 """
 
@@ -86,7 +86,10 @@ def _base_panel(rng: np.random.Generator) -> np.ndarray:
 
 
 def _add_hotspot(
-    img: np.ndarray, rng: np.random.Generator, severity: float, size_frac: float,
+    img: np.ndarray,
+    rng: np.random.Generator,
+    severity: float,
+    size_frac: float,
     pos: tuple[float, float],
 ) -> None:
     amp = _lerp(_HOTSPOT_AMP, severity)
@@ -98,7 +101,10 @@ def _add_hotspot(
 
 
 def _add_crack(
-    img: np.ndarray, rng: np.random.Generator, severity: float, size_frac: float,
+    img: np.ndarray,
+    rng: np.random.Generator,
+    severity: float,
+    size_frac: float,
     pos: tuple[float, float],
 ) -> None:
     dark = _lerp(_CRACK_DARK, severity)
@@ -121,7 +127,10 @@ def _add_crack(
 
 
 def _add_dead_cell(
-    img: np.ndarray, rng: np.random.Generator, severity: float, size_frac: float,
+    img: np.ndarray,
+    rng: np.random.Generator,
+    severity: float,
+    size_frac: float,
     pos: tuple[float, float],
 ) -> None:
     dark = _lerp(_DEAD_DARK, severity)
@@ -164,7 +173,7 @@ def render(
 
 
 # ----------------------------------------------------------------------------
-# Datasets and the honest, bin-disjoint train/test split.
+# Datasets and the leakage-free, bin-disjoint train/test split.
 # ----------------------------------------------------------------------------
 _N_BINS = 20  # severity/size are discretised into this many bins for the split
 

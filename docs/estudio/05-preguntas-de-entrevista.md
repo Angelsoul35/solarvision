@@ -13,7 +13,7 @@ límite de alcance, no lo escondo.
 ### "Tu exactitud, ¿no está inflada por ser datos sintéticos?"
 Ese es exactamente el riesgo, y por eso **no** uso un split aleatorio. Reservo
 *bins* enteros de severidad y tamaño para test, así que cada defecto de test es una
-configuración **no vista**. El número honesto es **0,88 ± 0,03** sobre 5 seeds, con
+configuración **no vista**. El número riguroso es **0,88 ± 0,03** sobre 5 seeds, con
 una brecha train-test acotada (~0,10). Si hubiera memorizado, la brecha sería grande
 y la exactitud, cercana a 1,0.
 

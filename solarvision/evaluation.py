@@ -1,4 +1,4 @@
-"""Honest, held-out evaluation of the defect detector.
+"""Leakage-free, held-out evaluation of the defect detector.
 
 A random train/test split of synthetic images would report a meaningless
 near-1.0: the two sets would share the exact defect configurations, so the model
@@ -56,9 +56,7 @@ def held_out_eval(seed: int = 7, holdout_frac: float = 0.35) -> EvalReport:
     tr_feats = [extract(im) for im in tr_x]
     te_feats = [extract(im) for im in te_x]
 
-    detector = DefectDetector().fit_features(
-        np.vstack([f.vector() for f in tr_feats]), tr_y
-    )
+    detector = DefectDetector().fit_features(np.vstack([f.vector() for f in tr_feats]), tr_y)
 
     test_pred = detector.predict_features_batch(te_feats)
     train_pred = detector.predict_features_batch(tr_feats)

@@ -14,7 +14,7 @@ def test_demo_runs(capsys):
     # Every panel is previewed as ASCII and every decision names its source.
     assert "via rule" in out or "via model" in out
     assert "key features:" in out
-    # The demo is honest about what the clear samples do and do not prove.
+    # The demo is rigorous about what the clear samples do and do not prove.
     assert "below 1.0" in out
 
 

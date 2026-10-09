@@ -4,7 +4,7 @@ from solarvision.evaluation import aggregate_eval, held_out_eval
 
 
 def test_held_out_generalises_without_memorising():
-    # Honest evaluation: whole severity/size bins are held out of training, so the
+    # Leakage-free evaluation: whole severity/size bins are held out of training, so the
     # test defect configurations are unseen and a near-1.0 cannot hide
     # memorisation. Floors are set conservatively below the measured numbers.
     report = held_out_eval()
@@ -15,7 +15,7 @@ def test_held_out_generalises_without_memorising():
 
 
 def test_generalisation_is_proven_by_a_small_gap_not_a_cap():
-    # The honesty signal is the small train/test gap on DISJOINT severity/size
+    # The trustworthy signal is the small train/test gap on DISJOINT severity/size
     # bins, not an arbitrary accuracy ceiling: a high score with a near-zero gap is
     # real generalisation, a high score with a large gap would be memorisation.
     # (Here the faint-defect-near-noise boundary keeps accuracy around 0.88 anyway.)

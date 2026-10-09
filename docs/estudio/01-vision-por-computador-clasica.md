@@ -6,7 +6,7 @@ El encargo es **offline y determinista**: sin red, sin modelos preentrenados, si
 descargas de datos. Eso descarta usar una CNN preentrenada (necesita red y pesos
 opacos). Y entrenar una CNN desde cero con imágenes sintéticas solo le enseñaría
 las manías del generador, no algo transferible, además de añadir una dependencia
-pesada y no determinista. La opción honesta es la **visión por computador clásica**:
+pesada y no determinista. La opción rigurosa es la **visión por computador clásica**:
 cada característica es un estadístico que un técnico puede nombrar y entender.
 
 ## Las cuatro clases

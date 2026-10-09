@@ -14,7 +14,7 @@ decision carries the reason that produced it.
 | Generator    | `solarvision/generate.py`  | Synthetic labelled panels + the bin-disjoint split + I/O  |
 | Features     | `solarvision/features.py`  | Classical CV features (brightness, blobs, edges, shape)   |
 | Detector     | `solarvision/detector.py`  | Rule layer + random-forest classifier, explainable report |
-| Evaluation   | `solarvision/evaluation.py`| Honest held-out generalisation measurement                |
+| Evaluation   | `solarvision/evaluation.py`| Leakage-free held-out generalisation measurement                |
 | Service      | `solarvision/service.py`   | Orchestration: render/decode → features → assess          |
 | HTTP API     | `solarvision/main.py`      | REST surface over the service                             |
 | CLI          | `solarvision/cli.py`       | End-to-end demo with an ASCII preview                     |
@@ -42,7 +42,7 @@ flowchart TD
 The brief is explicitly offline and deterministic: no model or dataset downloads,
 no network. That rules out a pretrained CNN, and training a CNN from scratch on
 synthetic data would only teach it the quirks of the renderer. Classical features
-are the honest fit: each one is a statistic a technician can name — "how bright is
+are the leakage-free fit: each one is a statistic a technician can name — "how bright is
 the brightest blob", "how elongated is the darkest region" — so the whole system
 is inspectable and reproducible bit-for-bit from a seed.
 
@@ -61,7 +61,7 @@ The features are continuous functions of the defect's severity and size, so a
 faint defect produces a weak signal that genuinely overlaps the healthy class
 under sensor noise. The evaluation holds out whole severity/size bins, so the test
 defects are configurations never seen in training; the reported accuracy is the
-honest generalisation number (~0.88 averaged over seeds, see `evaluation.py`), not
+rigorous generalisation number (~0.88 averaged over seeds, see `evaluation.py`), not
 a memorised ~1.0. Low-confidence calls are flagged for manual review rather than
 asserted.
 
@@ -80,7 +80,9 @@ decision.
 
 ## Scope
 
-SolarVision is a reference implementation on a **synthetic** benchmark, not a
-production inspection system. A real deployment needs labelled electroluminescence
-or thermal imagery and, almost certainly, a convolutional network; the honest
-baseline to beat there is this held-out score, not the within-distribution ~1.0.
+SolarVision is a reference implementation, not a production inspection system. It
+is validated on **real** electroluminescence imagery (the ELPV benchmark, ~0.88
+accuracy) as well as the controlled synthetic set. A production deployment would add
+defect types, thermal imagery and severity grading, and could use a convolutional
+network for extra accuracy at the cost of the per-feature explanation this pipeline
+gives an inspector.

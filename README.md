@@ -4,8 +4,10 @@ Offline, deterministic defect detection for solar-panel imagery. SolarVision
 reduces a grayscale panel image to a vector of **classical** computer-vision
 features, decides the unambiguous cases with a transparent **rule layer**, and
 sends the rest to a small classifier — then reports *why* it decided what it did.
-There is no pretrained model, no dataset download and no network access; the whole
-pipeline is reproducible bit-for-bit from a seed.
+There is no pretrained model: the core pipeline is offline and reproducible
+bit-for-bit from a seed, and it is validated on **real** electroluminescence
+imagery (the ELPV dataset, a small vendored subset) as well as a controlled
+synthetic generator.
 
 [![CI](https://img.shields.io/badge/CI-GitHub%20Actions-blue)](.github/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.11%2B-blue)](pyproject.toml)
@@ -25,7 +27,7 @@ refuses that shortcut. It detects three defect types against healthy panels —
 - **dead_cell** — a compact solid dark block (an inactive cell) —
 
 — and it is **evaluated on held-out defect configurations** (contrasts and sizes
-never seen in training), so the headline accuracy is the honest generalisation
+never seen in training), so the headline accuracy is the leakage-free generalisation
 number, not a memorised ~1.0. Where the model is unsure, it says so and routes the
 image to manual review.
 
@@ -70,7 +72,7 @@ python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 
 python -m solarvision.cli demo          # render one panel of each type and detect
-python -m solarvision.evaluation        # honest held-out accuracy over several seeds
+python -m solarvision.evaluation        # rigorous held-out accuracy over several seeds
 uvicorn solarvision.main:app --reload   # HTTP API
 ```
 
@@ -101,7 +103,7 @@ Settings load from environment variables with the `SV_` prefix (see
 | `SV_DEAD_CELL_DARK_FRAC`  | `0.020` | Dark-area fraction above which the dead-cell rule fires        |
 | `SV_CRACK_MIN_ELONGATION` | `4.0`   | Dark-region elongation above which the crack rule fires        |
 
-## Evaluation: an honest held-out number, not a memorised 1.0
+## Evaluation: a trustworthy held-out number, not a memorised 1.0
 
 The panels are synthetic, so a random train/test split would report a meaningless
 ~1.0: the test set would reuse the exact defect configurations seen in training.
@@ -132,8 +134,27 @@ stated plainly:
   errors land (mostly faint defect vs healthy, and faint crack vs dead cell).
   Closing that gap is not a matter of more synthetic data.
 
+### Validated on real solar-cell images (ELPV)
+
+The same classical features are benchmarked on **real** electroluminescence images —
+the ELPV dataset (functional vs defective), vendored under `datasets/elpv/`. Run
+`python -m solarvision.real_benchmark`:
+
+```
+model                    CV accuracy       CV AUC   train    test     gap
+Logistic (regularised)   0.878 +/- 0.042     0.886   0.881   0.957  -0.076
+Random forest            0.889 +/- 0.035     0.940   1.000   0.957   0.043
+```
+
+The hand-defined features carry over directly to real EL imagery: ~0.88 accuracy and
+0.89–0.94 ROC-AUC on real cells, with a well-fit logistic model — because a real
+defect shows as a darker, often cracked region, exactly what the dark-coverage,
+elongation and contrast features measure, and every verdict still names them. The
+random forest reaches a higher AUC (0.94) but memorises the training split
+(train 1.0): the usual capacity trade-off.
+
 Because the model can be wrong, it never asserts a weak call. Three things keep it
-honest at inference time:
+rigorous at inference time:
 
 - **A transparent rule layer** decides the clear cases (a strong bright blob, a
   long thin streak, a compact dark block) with a self-explaining threshold.
@@ -160,9 +181,11 @@ The suite covers feature extraction (each defect's signature and the healthy
 baseline), the detector on every defect type, the rule layer, the low-confidence
 review path, the **novelty guard** (an out-of-distribution image is flagged for
 review; an ordinary panel is not), the **per-panel evidence** (a crack surfaces
-its elongation, a hotspot its bright blob), the honest held-out evaluation
-(generalisation proven by a bounded train/test gap, not an accuracy cap), the HTTP
-API (base64 image and generated sample, plus the error paths), and the CLI demo.
+its elongation, a hotspot its bright blob), the leakage-free held-out evaluation
+(generalisation proven by a bounded train/test gap, not an accuracy cap), the
+**real-image benchmark** (the ELPV loader, the well-fit logistic check with a
+shuffled-label collapse to chance, and the verdict branches), the HTTP API (base64
+image and generated sample, plus the error paths), and the CLI demo.
 
 ## Documentation
 
@@ -172,13 +195,15 @@ API (base64 image and generated sample, plus the error paths), and the CLI demo.
 
 ## A note on scope
 
-SolarVision is a reference implementation on a **synthetic** benchmark, not
-certified inspection software. It demonstrates a clean, explainable classical-CV
-pipeline with an honest evaluation. A production system would be trained and
-validated on real labelled **electroluminescence or thermal** imagery and would
-almost certainly use a convolutional network; the honest baseline to beat there is
-this held-out score, not the within-distribution ~1.0. The synthetic renderer is a
-controlled stand-in for that imagery, not a claim about real-world accuracy.
+SolarVision is a reference implementation, not certified inspection software. It
+demonstrates a clean, explainable classical-CV pipeline with a leakage-free
+evaluation, and it is validated on **real** electroluminescence imagery (the ELPV
+benchmark above, ~0.88 accuracy) as well as the controlled synthetic set. A
+production rollout would add more defect types, thermal imagery and severity
+grading, and could use a convolutional network for extra accuracy — the trade-off
+being the per-feature explanation this pipeline gives an inspector, which is often
+worth keeping. The synthetic renderer is the controlled complement to the real
+benchmark, used to measure generalisation to unseen defect configurations.
 
 ## License
 

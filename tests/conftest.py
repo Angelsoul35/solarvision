@@ -20,8 +20,9 @@ def service() -> SolarVisionService:
     return SolarVisionService()
 
 
-def make_panel(defect: DefectClass | str, seed: int, severity: float = 0.85,
-               size_frac: float = 0.7) -> np.ndarray:
+def make_panel(
+    defect: DefectClass | str, seed: int, severity: float = 0.85, size_frac: float = 0.7
+) -> np.ndarray:
     """Render one clear, deterministic panel for a test."""
     rng = np.random.default_rng(seed)
     cls = DefectClass(defect)

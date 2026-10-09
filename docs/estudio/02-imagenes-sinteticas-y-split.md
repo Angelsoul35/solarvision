@@ -1,4 +1,4 @@
-# 02 — Imágenes sintéticas y el split honesto
+# 02 — Imágenes sintéticas y el split riguroso
 
 ## Cómo se genera un panel
 
@@ -37,7 +37,7 @@ reserva **bins enteros** para test: los valores de severidad/tamaño detrás de 
 imágenes de test son **disjuntos** de los de entrenamiento. Así, **cada defecto de
 test es una configuración nunca vista**.
 
-Dos detalles que mantienen la honestidad:
+Dos detalles que mantienen el rigor:
 
 - Los bins reservados están **entrelazados** por todo el rango (vía un *shuffle* con
   semilla), no son "los fuertes" ni "los tenues". Train y test afrontan la **misma
@@ -46,5 +46,5 @@ Dos detalles que mantienen la honestidad:
   invariantes a la posición por diseño: no hay nada que reservar ahí.
 
 El resultado: el número refleja la **generalización a configuraciones no vistas**, y
-como el extremo tenue se solapa con "sano" bajo ruido, cae honestamente por debajo
+como el extremo tenue se solapa con "sano" bajo ruido, cae rigurosamente por debajo
 de 1,0.

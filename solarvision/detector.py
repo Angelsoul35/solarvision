@@ -28,7 +28,7 @@ from .generate import make_dataset
 from .labels import DefectClass, describe
 
 # Confidence reported for a rule-layer hit: the rules fire only on clear evidence,
-# so they are treated as high-confidence, but not a dishonest 1.0.
+# so they are treated as high-confidence, but not a disrigorous 1.0.
 _RULE_CONFIDENCE = 0.95
 
 
@@ -86,16 +86,12 @@ class DefectDetector:
         (a non-panel image, an unseen artefact) is routed to review instead of being
         classified with false confidence.
         """
-        model = RandomForestClassifier(
-            n_estimators=200, max_depth=12, random_state=0, n_jobs=1
-        )
+        model = RandomForestClassifier(n_estimators=200, max_depth=12, random_state=0, n_jobs=1)
         model.fit(x, labels)
         self._model = model
         self._feat_mean = x.mean(axis=0)
         self._feat_std = x.std(axis=0) + 1e-9
-        self._novelty = IsolationForest(
-            n_estimators=200, contamination=0.02, random_state=0
-        ).fit(x)
+        self._novelty = IsolationForest(n_estimators=200, contamination=0.02, random_state=0).fit(x)
         return self
 
     def _require_fitted(self) -> RandomForestClassifier:

@@ -82,7 +82,7 @@ def demo() -> None:
     print(f"Detected {correct}/{len(samples)} clear samples correctly, and the")
     print("out-of-distribution input was correctly routed to review, not classified.")
     print(
-        "These are deliberately clear instances. The honest, held-out accuracy on\n"
+        "These are deliberately clear instances. The leakage-free, held-out accuracy on\n"
         "UNSEEN defect configurations (faint defects included) is reported by\n"
         "`python -m solarvision.evaluation` and is well below 1.0 -- see the README."
     )

@@ -23,6 +23,6 @@ out there.
 - The headline accuracy (~0.90 averaged over seeds) reflects generalisation to
   unseen contrasts and sizes, not re-reading a memorised configuration.
 - The faint end of the severity range overlaps the healthy class under noise, so
-  the number honestly sits below 1.0; that residual error is real and expected.
+  the number rigorously sits below 1.0; that residual error is real and expected.
 - A small train/test gap is reported alongside it as evidence that the model
   learned the signal rather than the specific training configurations.
